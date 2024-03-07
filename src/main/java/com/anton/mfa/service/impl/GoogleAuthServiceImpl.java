@@ -1,6 +1,9 @@
 package com.anton.mfa.service.impl;
 
+import com.anton.mfa.service.Authentication;
 import com.anton.mfa.service.GoogleAuthService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
@@ -9,12 +12,22 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletResponse;
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.security.Key;
 import java.time.Instant;
+import java.util.Base64;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,9 +48,12 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
      * @return
      */
     @Override
-    public String generateSecretKey() {
+    public Object generateSecretKey() {
         GoogleAuthenticatorKey key = googleAuthenticator.createCredentials();
-        return key.getKey();
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode jsonResponse = objectMapper.createObjectNode();
+        jsonResponse.put("key", key.getKey());
+        return jsonResponse;
     }
 
     /**
@@ -48,7 +64,10 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
      */
     @Override
     public boolean validateCode(String secretKey, int code) {
-        return googleAuthenticator.authorize(secretKey, code);
+        if(googleAuthenticator.authorize(secretKey, code)){
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -72,21 +91,45 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
      * @throws IOException
      */
     @Override
-    public ResponseEntity<?> generateQRCode(String secretKey, HttpServletResponse response) throws IOException {
+//    public ResponseEntity<?> generateQRCode(String secretKey, HttpServletResponse response) throws IOException {
+//        String otpAuthURL = generateOTPAuthURL("Square", "nadeeshanfe@allianz.lk", secretKey);
+////        String otpAuthURL = "otpauth://totp/MyAppName:user@example.com?secret=" + secretKey + "&issuer=MyAppName";
+//        int width = 300;
+//        int height = 300;
+//        Map<EncodeHintType, Object> hints = new HashMap<>();
+//        hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+//        try {
+//            BitMatrix bitMatrix = new QRCodeWriter().encode(otpAuthURL, BarcodeFormat.QR_CODE, width, height, hints);
+//            MatrixToImageWriter.writeToStream(bitMatrix, "PNG", response.getOutputStream());
+//        } catch (WriterException e) {
+//            e.printStackTrace();
+//            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to generate QR code");
+//        }
+//        return null;
+//    }
+    public ResponseEntity<?> generateQRCode(String secretKey, HttpServletResponse response) {
         String otpAuthURL = generateOTPAuthURL("Square", "nadeeshanfe@allianz.lk", secretKey);
-//        String otpAuthURL = "otpauth://totp/MyAppName:user@example.com?secret=" + secretKey + "&issuer=MyAppName";
         int width = 300;
         int height = 300;
         Map<EncodeHintType, Object> hints = new HashMap<>();
         hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+
         try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             BitMatrix bitMatrix = new QRCodeWriter().encode(otpAuthURL, BarcodeFormat.QR_CODE, width, height, hints);
-            MatrixToImageWriter.writeToStream(bitMatrix, "PNG", response.getOutputStream());
-        } catch (WriterException e) {
+            MatrixToImageWriter.writeToStream(bitMatrix, "PNG", outputStream);
+
+            byte[] qrImageData = outputStream.toByteArray();
+            String qrImageBase64 = Base64.getEncoder().encodeToString(qrImageData);
+
+            JSONObject jsonResponse = new JSONObject();
+            jsonResponse.put("qrImageBase64", qrImageBase64);
+
+            return ResponseEntity.ok().body(jsonResponse.toString());
+        } catch (Exception e) {
             e.printStackTrace();
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to generate QR code");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to generate QR code");
         }
-        return null;
     }
 
     /**
@@ -107,6 +150,5 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
         }
         return otpAuthURL;
     }
-
 
 }

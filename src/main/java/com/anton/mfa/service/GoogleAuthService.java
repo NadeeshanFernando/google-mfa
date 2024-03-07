@@ -10,7 +10,7 @@ import java.io.IOException;
  */
 public interface GoogleAuthService {
 
-    public String generateSecretKey();
+    public Object generateSecretKey();
 
     public boolean validateCode(String secretKey, int code);
 
