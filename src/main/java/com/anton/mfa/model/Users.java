@@ -23,4 +23,10 @@ public class Users {
 
     @Column(name = "password")
     public String password;
+
+    @Column(name = "mfa_enabled")
+    public boolean mfaEnabled;
+
+    @Column(name = "secret_Key")
+    public String secretKey;
 }

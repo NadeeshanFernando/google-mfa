@@ -1,5 +1,6 @@
 package com.anton.mfa.controller;
 
+import com.anton.mfa.dto.ResponseDto;
 import com.anton.mfa.service.GoogleAuthService;
 import com.anton.mfa.service.impl.GoogleAuthServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,14 +47,13 @@ public class GoogleAuthController {
     }
 
     /**
-     * @param secretKey
      * @param code
      * @return
      */
     @PostMapping("/validate-code")
-    public ResponseEntity<?> validateCode(@RequestParam String secretKey, @RequestParam int code) {
-        if(authService.validateCode(secretKey, code)){
-            return ResponseEntity.status(200).body(generateToken("nadeeshanfe"));
+    public ResponseEntity<?> validateCode(@RequestParam String username, @RequestParam int code) {
+        if(authService.validateCode(username, code)){
+            return ResponseEntity.status(200).body(generateToken(username));
         }
         return ResponseEntity.status(401).body("Invalid code!");
     }
@@ -79,22 +79,14 @@ public class GoogleAuthController {
 
     /**
      *
-     * @param secretKey
      * @param response
      * @return
      * @throws IOException
      */
-    @GetMapping("/generate-qr/{secretKey}")
-    public ResponseEntity<?> generateQRCode(@PathVariable String secretKey, HttpServletResponse response) throws IOException {
-        if (secretKey == null || secretKey.isEmpty()) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Secret key cannot be empty");
-            return ResponseEntity.badRequest().body("Secret key cannot be empty");
-        }
-        if (!authService.isValidSecretKeyFormat(secretKey)) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid secret key format");
-            return ResponseEntity.badRequest().body("Invalid secret key format");
-        }
-        return authService.generateQRCode(secretKey, response);
+    @GetMapping("/generate-qr/{username}")
+    public ResponseEntity<?> generateQRCode(@PathVariable String username, HttpServletResponse response) throws IOException {
+        ResponseDto<?> responseDto = authService.generateQRCode(username, response);
+        return ResponseEntity.status(responseDto.getStatus()).body(responseDto);
     }
 
 }

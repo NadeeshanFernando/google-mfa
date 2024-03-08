@@ -1,5 +1,8 @@
 package com.anton.mfa.service.impl;
 
+import com.anton.mfa.dto.ResponseDto;
+import com.anton.mfa.model.Users;
+import com.anton.mfa.repository.UserRepository;
 import com.anton.mfa.service.Authentication;
 import com.anton.mfa.service.GoogleAuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,6 +42,9 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
 
     private final GoogleAuthenticator googleAuthenticator;
 
+    @Autowired
+    private UserRepository userRepository;
+
     public GoogleAuthServiceImpl() {
         this.googleAuthenticator = new GoogleAuthenticator();
     }
@@ -48,24 +54,29 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
      * @return
      */
     @Override
-    public Object generateSecretKey() {
+    public String generateSecretKey() {
         GoogleAuthenticatorKey key = googleAuthenticator.createCredentials();
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode jsonResponse = objectMapper.createObjectNode();
-        jsonResponse.put("key", key.getKey());
-        return jsonResponse;
+        return key.getKey();
     }
 
     /**
      *
-     * @param secretKey
+     * @param username
      * @param code
      * @return
      */
     @Override
-    public boolean validateCode(String secretKey, int code) {
-        if(googleAuthenticator.authorize(secretKey, code)){
-            return true;
+    public boolean validateCode(String username, int code) {
+        Users dbUser = userRepository.findByUsername(username);
+        if(dbUser != null){
+            if(googleAuthenticator.authorize(dbUser.getSecretKey(), code)){
+                if(!dbUser.isMfaEnabled()){
+                    dbUser.setMfaEnabled(true);
+                    userRepository.save(dbUser);
+                }
+                return true;
+            }
+            return false;
         }
         return false;
     }
@@ -85,50 +96,59 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
 
     /**
      *
-     * @param secretKey
      * @param response
      * @return
      * @throws IOException
      */
     @Override
-//    public ResponseEntity<?> generateQRCode(String secretKey, HttpServletResponse response) throws IOException {
-//        String otpAuthURL = generateOTPAuthURL("Square", "nadeeshanfe@allianz.lk", secretKey);
-////        String otpAuthURL = "otpauth://totp/MyAppName:user@example.com?secret=" + secretKey + "&issuer=MyAppName";
-//        int width = 300;
-//        int height = 300;
-//        Map<EncodeHintType, Object> hints = new HashMap<>();
-//        hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
-//        try {
-//            BitMatrix bitMatrix = new QRCodeWriter().encode(otpAuthURL, BarcodeFormat.QR_CODE, width, height, hints);
-//            MatrixToImageWriter.writeToStream(bitMatrix, "PNG", response.getOutputStream());
-//        } catch (WriterException e) {
-//            e.printStackTrace();
-//            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to generate QR code");
-//        }
-//        return null;
-//    }
-    public ResponseEntity<?> generateQRCode(String secretKey, HttpServletResponse response) {
-        String otpAuthURL = generateOTPAuthURL("Square", "nadeeshanfe@allianz.lk", secretKey);
-        int width = 300;
-        int height = 300;
-        Map<EncodeHintType, Object> hints = new HashMap<>();
-        hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+    public ResponseDto<?> generateQRCode(String username, HttpServletResponse response) {
+        ResponseDto<?> responseDto = new ResponseDto<>();
+        Users dbUser = userRepository.findByUsername(username);
+        if(dbUser != null){
+            if(!dbUser.isMfaEnabled()) {
+                String secretKey = generateSecretKey();
+                dbUser.setSecretKey(secretKey);
+                userRepository.save(dbUser);
 
-        try {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            BitMatrix bitMatrix = new QRCodeWriter().encode(otpAuthURL, BarcodeFormat.QR_CODE, width, height, hints);
-            MatrixToImageWriter.writeToStream(bitMatrix, "PNG", outputStream);
+                String otpAuthURL = generateOTPAuthURL("Square", username + "@allianz.lk", dbUser.getSecretKey());
+                int width = 300;
+                int height = 300;
+                Map<EncodeHintType, Object> hints = new HashMap<>();
+                hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
 
-            byte[] qrImageData = outputStream.toByteArray();
-            String qrImageBase64 = Base64.getEncoder().encodeToString(qrImageData);
+                try {
+                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    BitMatrix bitMatrix = new QRCodeWriter().encode(otpAuthURL, BarcodeFormat.QR_CODE, width, height, hints);
+                    MatrixToImageWriter.writeToStream(bitMatrix, "PNG", outputStream);
 
-            JSONObject jsonResponse = new JSONObject();
-            jsonResponse.put("qrImageBase64", qrImageBase64);
+                    byte[] qrImageData = outputStream.toByteArray();
+                    String qrImageBase64 = Base64.getEncoder().encodeToString(qrImageData);
 
-            return ResponseEntity.ok().body(jsonResponse.toString());
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to generate QR code");
+                    JSONObject jsonResponse = new JSONObject();
+                    jsonResponse.put("qrImageBase64", qrImageBase64);
+
+                    responseDto.setStatus(HttpStatus.OK.value());
+                    responseDto.setMessage("QR code generated");
+                    responseDto.setData(qrImageBase64);
+                    return responseDto;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    responseDto.setStatus(HttpStatus.OK.value());
+                    responseDto.setMessage("QR code not generated");
+                    responseDto.setData(null);
+                    return responseDto;
+                }
+            }
+            responseDto.setStatus(HttpStatus.OK.value());
+            responseDto.setMessage("User already registered with Google Authenticator");
+            responseDto.setData(null);
+            return responseDto;
+        }
+        else{
+            responseDto.setStatus(HttpStatus.OK.value());
+            responseDto.setMessage("Invalid username or password");
+            responseDto.setData(null);
+            return responseDto;
         }
     }
 

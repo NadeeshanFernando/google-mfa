@@ -1,5 +1,6 @@
 package com.anton.mfa.controller;
 
+import com.anton.mfa.dto.ResponseDto;
 import com.anton.mfa.model.Users;
 import com.anton.mfa.repository.UserRepository;
 import com.anton.mfa.service.Authentication;
@@ -28,6 +29,7 @@ public class AuthenticationController {
      */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Users user) {
-        return authentication.login(user);
+        ResponseDto<?> responseDto = authentication.loginUser(user);
+        return ResponseEntity.status(responseDto.getStatus()).body(responseDto);
     }
 }

@@ -1,16 +1,12 @@
 package com.anton.mfa.service.impl;
 
+import com.anton.mfa.dto.ResponseDto;
 import com.anton.mfa.model.Users;
 import com.anton.mfa.repository.UserRepository;
 import com.anton.mfa.service.Authentication;
 import com.anton.mfa.service.GoogleAuthService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -26,23 +22,26 @@ public class AuthenticationImpl implements Authentication {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private GoogleAuthService googleAuthService;
-
     /**
      *
      * @param user
      * @return
      */
     @Override
-    public ResponseEntity<?> login(Users user) {
+    public ResponseDto<?> loginUser(Users user) {
+        ResponseDto<?> responseDto = new ResponseDto<>();
         Users dbUser = userRepository.findByUsernameAndPassword(user.getUsername(), user.getPassword());
 
         if (dbUser != null) {
-            Object jsonResponse = googleAuthService.generateSecretKey();
-            return ResponseEntity.ok().body(jsonResponse);
+            responseDto.setStatus(HttpStatus.OK.value());
+            responseDto.setMessage("Login Success");
+            responseDto.setData(null);
+            return responseDto;
         } else {
-            return ResponseEntity.status(401).body("Invalid username or password");
+            responseDto.setStatus(HttpStatus.UNAUTHORIZED.value());
+            responseDto.setMessage("Invalid username or password");
+            responseDto.setData(null);
+            return responseDto;
         }
     }
 }
