@@ -66,7 +66,8 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
      * @return
      */
     @Override
-    public boolean validateCode(String username, int code) {
+    public ResponseDto<?> validateCode(String username, int code) {
+        ResponseDto<?> responseDto = new ResponseDto<>();
         Users dbUser = userRepository.findByUsername(username);
         if(dbUser != null){
             if(googleAuthenticator.authorize(dbUser.getSecretKey(), code)){
@@ -74,11 +75,21 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
                     dbUser.setMfaEnabled(true);
                     userRepository.save(dbUser);
                 }
-                return true;
+                responseDto.setStatus(HttpStatus.OK.value());
+                responseDto.setMessage("Code matched");
+                generateToken(username);
+                responseDto.setData(generateToken(username));
+                return responseDto;
             }
-            return false;
+            responseDto.setStatus(HttpStatus.NOT_FOUND.value());
+            responseDto.setMessage("Code mismatched");
+            responseDto.setData(null);
+            return responseDto;
         }
-        return false;
+        responseDto.setStatus(HttpStatus.UNAUTHORIZED.value());
+        responseDto.setMessage("User not found");
+        responseDto.setData(null);
+        return responseDto;
     }
 
     /**
@@ -96,12 +107,11 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
 
     /**
      *
-     * @param response
+     * @param username
      * @return
-     * @throws IOException
      */
     @Override
-    public ResponseDto<?> generateQRCode(String username, HttpServletResponse response) {
+    public ResponseDto<?> generateQRCode(String username) {
         ResponseDto<?> responseDto = new ResponseDto<>();
         Users dbUser = userRepository.findByUsername(username);
         if(dbUser != null){
@@ -169,6 +179,30 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
             e.printStackTrace();
         }
         return otpAuthURL;
+    }
+
+    /**
+     *
+     * @param username
+     * @return
+     */
+    public Object generateToken(String username){
+        Key key = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+
+        JSONObject claims = new JSONObject();
+        claims.put("username", username);
+
+        String token = Jwts.builder()
+                .setClaims(claims.toMap())
+                .setExpiration(new Date(System.currentTimeMillis() + 864000000))
+                .signWith(key)
+                .compact();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode jsonResponse = objectMapper.createObjectNode();
+        jsonResponse.put("access_token", token);
+
+        return jsonResponse;
     }
 
 }
