@@ -1,12 +1,11 @@
 package com.anton.mfa.service;
 
 import com.anton.mfa.dto.ResponseDto;
-import com.anton.mfa.model.Users;
-import org.springframework.http.ResponseEntity;
+import com.anton.mfa.model.User;
 
 /**
  * @author by nadeeshan_fdz
  */
 public interface Authentication {
-    public ResponseDto<?> loginUser(Users user);
+    public ResponseDto<?> loginUser(User user);
 }

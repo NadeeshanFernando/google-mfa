@@ -1,17 +1,12 @@
 package com.anton.mfa.service.impl;
 
 import com.anton.mfa.dto.ResponseDto;
-import com.anton.mfa.model.Users;
+import com.anton.mfa.model.User;
 import com.anton.mfa.repository.UserRepository;
 import com.anton.mfa.service.Authentication;
-import com.anton.mfa.service.GoogleAuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-
-import java.security.Key;
-import java.util.Date;
 
 /**
  * @author by nadeeshan_fdz
@@ -28,9 +23,9 @@ public class AuthenticationImpl implements Authentication {
      * @return
      */
     @Override
-    public ResponseDto<?> loginUser(Users user) {
+    public ResponseDto<?> loginUser(User user) {
         ResponseDto<?> responseDto = new ResponseDto<>();
-        Users dbUser = userRepository.findByUsernameAndPassword(user.getUsername(), user.getPassword());
+        User dbUser = userRepository.findByUsernameAndPassword(user.getUsername(), user.getPassword());
 
         if (dbUser != null) {
             responseDto.setStatus(HttpStatus.OK.value());

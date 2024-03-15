@@ -1,8 +1,7 @@
 package com.anton.mfa.controller;
 
 import com.anton.mfa.dto.ResponseDto;
-import com.anton.mfa.model.Users;
-import com.anton.mfa.repository.UserRepository;
+import com.anton.mfa.model.User;
 import com.anton.mfa.service.Authentication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +27,7 @@ public class AuthenticationController {
      * @return
      */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Users user) {
+    public ResponseEntity<?> login(@RequestBody User user) {
         ResponseDto<?> responseDto = authentication.loginUser(user);
         return ResponseEntity.status(responseDto.getStatus()).body(responseDto);
     }

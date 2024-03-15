@@ -1,6 +1,6 @@
 package com.anton.mfa.repository;
 
-import com.anton.mfa.model.Users;
+import com.anton.mfa.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -8,10 +8,10 @@ import org.springframework.stereotype.Repository;
  * @author by nadeeshan_fdz
  */
 @Repository
-public interface UserRepository extends JpaRepository<Users, Long> {
-    Users findByUsername(String username);
+public interface UserRepository extends JpaRepository<User, Long> {
+    User findByUsername(String username);
 
-    Users findByUsernameAndPassword(String username, String password);
+    User findByUsernameAndPassword(String username, String password);
 
-    Users findByUsernameAndSecretKey(String username, String secretKey);
+    User findByUsernameAndSecretKey(String username, String secretKey);
 }

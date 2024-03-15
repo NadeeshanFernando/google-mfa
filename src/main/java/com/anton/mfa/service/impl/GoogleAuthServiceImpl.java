@@ -1,15 +1,13 @@
 package com.anton.mfa.service.impl;
 
 import com.anton.mfa.dto.ResponseDto;
-import com.anton.mfa.model.Users;
+import com.anton.mfa.model.User;
 import com.anton.mfa.repository.UserRepository;
-import com.anton.mfa.service.Authentication;
 import com.anton.mfa.service.GoogleAuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
-import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
@@ -18,17 +16,13 @@ import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import jakarta.servlet.http.HttpServletResponse;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.security.Key;
-import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
@@ -68,7 +62,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
     @Override
     public ResponseDto<?> validateCode(String username, int code) {
         ResponseDto<?> responseDto = new ResponseDto<>();
-        Users dbUser = userRepository.findByUsername(username);
+        User dbUser = userRepository.findByUsername(username);
         if(dbUser != null){
             if(googleAuthenticator.authorize(dbUser.getSecretKey(), code)){
                 if(!dbUser.isMfaEnabled()){
@@ -113,7 +107,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
     @Override
     public ResponseDto<?> generateQRCode(String username) {
         ResponseDto<?> responseDto = new ResponseDto<>();
-        Users dbUser = userRepository.findByUsername(username);
+        User dbUser = userRepository.findByUsername(username);
         if(dbUser != null){
             if(!dbUser.isMfaEnabled()) {
                 String secretKey = generateSecretKey();
